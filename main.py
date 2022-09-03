@@ -48,7 +48,7 @@ def config(update: Update, context: CallbackContext) -> int:
     # debugging timer setting to 10 seconds after now (Berlin is UTC+2)
     x = datetime.now()
     print(x)
-    later = x + timedelta(hours =  -2, seconds = 10)
+    later = x + timedelta(hours =  -2, seconds = 2)
 
     chat_id = update.effective_message.chat_id
     #job_removed = remove_job_if_exists(str(chat_id), context)
@@ -76,6 +76,19 @@ def cancel(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
+def idle(update: Update, context: CallbackContext) -> int:
+    """Sends a message"""
+    user = update.message.from_user
+    logger.info("User %s wrote an entry.", user.first_name)
+    update.message.reply_text(
+        'I received your message and will note it down in your journal'
+    )
+
+    message = update.message.text
+
+    return IDLE
+
+
 def main() -> None:
     """Run the bot."""
     # Create the Updater and pass it your bot's token.
@@ -89,7 +102,7 @@ def main() -> None:
         entry_points=[CommandHandler('start', start)],
         states={
             CONFIG: [MessageHandler(Filters.text & ~Filters.command, config)],
-            IDLE: [MessageHandler(Filters.text & ~Filters.command, config)],
+            IDLE: [MessageHandler(Filters.text & ~Filters.command, idle)],
             WRITING: [MessageHandler(Filters.text & ~Filters.command, config)],
             PROMPT: [MessageHandler(Filters.text & ~Filters.command, config)],
             FREE: [MessageHandler(Filters.text & ~Filters.command, config)],
