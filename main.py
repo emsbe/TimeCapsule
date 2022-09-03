@@ -1,15 +1,9 @@
 import logging
-from config import *
+#from config import *
+from datetime import time, datetime, date, time, timedelta
 
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update # das ist das, was wir brauchen: Update
-from telegram.ext import (
-    Updater,
-    CommandHandler,
-    MessageHandler,
-    Filters,
-    ConversationHandler,
-    CallbackContext,
-)
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update  # das ist das, was wir brauchen: Update
+from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackContext)
 
 # Enable logging
 logging.basicConfig(
@@ -23,24 +17,61 @@ START, CONFIG, IDLE, WRITING, PROMPT, FREE, EXPORT, STOP = range(8)
 
 def start(update: Update, context: CallbackContext) -> int:
     """Starts the conversation and asks the user about their gender."""
-    reply_keyboard = [['Boy', 'Girl', 'Other']]
+    # reply_keyboard = [['Boy', 'Girl', 'Other']]
 
     update.message.reply_text(
-        'Hi! My name is Professor Bot. I will hold a conversation with you. '
-        'Send /cancel to stop talking to me. Tell me something about you!\n\n'
+        'Hi! I\'m your personal time capsule. I will hold a conversation with you and by this you will build a journal of your everyday activites.'
+        'This is a prototype that stores your data publicly accessible on AWS. Please only share what is ok for you.'
+        'Send /cancel to stop talking to me. Tell me when do you want to write your journal? Please use the format HH:MM. \n\n'
     )
 
     return CONFIG
+
+
+def alarm(context: CallbackContext) -> None:
+    """Send the alarm message."""
+    print("hello")
+    job = context.job
+    print(job, job.context)
+    context.bot.send_message(job.context["chat_id"], text=f'Hey {job.context["data"]}, how was your day? What did you do today? Maybe send one or two images to show me what you did!')
 
 
 def config(update: Update, context: CallbackContext) -> int:
     """Stores the info about the user and ends the conversation."""
     user = update.message.from_user
     logger.info("Bio of %s: %s", user.first_name, update.message.text)
-    update.message.reply_text('Thank you! I hope we can talk again some day.')
+    time1 = update.message.text.split(":")
+    hours = time1[0]
+    minutes = time1[1]
+    update.message.reply_text(f'Thank you! I will message you at {hours}:{minutes}.')
     print(update.message.text)
 
-    return ConversationHandler.END
+    x = datetime.now()
+    print(x)
+    later = x + timedelta(0, 10)
+
+    chat_id = update.effective_message.chat_id
+    due = 5
+    # if due < 0:
+    #     await update.effective_message.reply_text("Sorry we can not go back to future!")
+    #     return
+    #job_removed = remove_job_if_exists(str(chat_id), context)
+
+    # get this to work and we can safe a lot of code
+    # context.job_queue.run_daily(alarm, later, context={"chat_id":chat_id,"data":user.first_name}, name=str(chat_id))
+
+    # the following executes alarm 5 seconds afterwards, based on https://github.com/python-telegram-bot/python-telegram-bot/blob/master/examples/timerbot.py
+    context.job_queue.run_once(alarm, due, context={"chat_id":chat_id,"data":user.first_name}, name=str(chat_id))
+
+    text = "Timer successfully set!"
+    print(text, later)
+    update.effective_message.reply_text(text)
+    print(context.job_queue)
+    #if job_removed:
+    #    text += " Old one was removed."
+    #await update.effective_message.reply_text(text)
+
+    return IDLE
 
 
 def cancel(update: Update, context: CallbackContext) -> int:
