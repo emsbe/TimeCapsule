@@ -1,6 +1,8 @@
 import logging
 import boto3
-import os
+import pymongo
+import json
+from pymongo import MongoClient, InsertOne
 
 #from config import *
 from datetime import time, datetime, date, time, timedelta
@@ -16,10 +18,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 START, CONFIG, IDLE, WRITING, PROMPT, FREE, EXPORT, STOP = range(8)
+
+# s3 Setup
 s3region = "eu-central-1"
 s3 = boto3.client('s3', s3region,
                       aws_access_key_id=s3AcessKey,
                       aws_secret_access_key=s3secretKey)
+
+# Mongo Setup
+client = pymongo.MongoClient(f'mongodb+srv://{mongoAccess}@main.kgnrhwx.mongodb.net/?retryWrites=true&w=majority')
+db = client.TimeCapsule
+collection = db.Entries
+requesting = []
 
 def start(update: Update, context: CallbackContext) -> int:
     """Starts the conversation and asks the user about their gender."""
@@ -89,25 +99,35 @@ def idle(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(
         'I received your message and will note it down in your journal'
     )
+
     currentTime = datetime.now()
 
     message = update.message.text
+    url = ""
     user = update.message.from_user
     if(update.message.photo):
+        # TODO how to handle multiple images sent at once?
         photo_file = update.message.photo[-1].get_file()
         photo_file.download('images/user_photo.jpg')
         logger.info("Photo of %s: %s", user.first_name, 'images/user_photo.jpg')
         update.message.reply_text(
             'I\'ve received your photo and added it to your journal entry for today.'
         )
-        filename = f'{user.id}_{currentTime.year}{currentTime.month}{currentTime.day}_{currentTime.hour}{currentTime.minute}{currentTime.seconds}.jpg'
+        filename = f'{user.id}_{currentTime.year}{currentTime.month}{currentTime.day}_{currentTime.hour}{currentTime.minute}{currentTime.second}.jpg'
         bucketname = 'timecapsule-spehsa'
         s3.upload_file('images/user_photo.jpg', bucketname, filename)
         url = f"https://{bucketname}.s3.{s3region}.amazonaws.com/{filename}"
 
-    else:
-        # handle text input
-        print(message)
+        imageEntry = [{"type": "image", "link": url, "high_importance": "false"}]
+        result = {"user": user.id, "date": f'{currentTime.year}-{currentTime.month}-{currentTime.day}', "message": "", "resources": imageEntry}
+        collection.insert_one(result)
+
+    # handle text input
+    print(message)
+    if(message):
+        result = {"user": user.id, "date": f'{currentTime.year}-{currentTime.month}-{currentTime.day}', "message": message,
+                  "resources": []}
+        collection.insert_one(result)
 
     return IDLE
 
