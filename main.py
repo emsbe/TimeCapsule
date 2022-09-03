@@ -1,4 +1,7 @@
 import logging
+import boto3
+import os
+
 #from config import *
 from datetime import time, datetime, date, time, timedelta
 
@@ -13,7 +16,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 START, CONFIG, IDLE, WRITING, PROMPT, FREE, EXPORT, STOP = range(8)
-
+s3region = "eu-central-1"
+s3 = boto3.client('s3', s3region,
+                      aws_access_key_id=s3AcessKey,
+                      aws_secret_access_key=s3secretKey)
 
 def start(update: Update, context: CallbackContext) -> int:
     """Starts the conversation and asks the user about their gender."""
@@ -83,8 +89,25 @@ def idle(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(
         'I received your message and will note it down in your journal'
     )
+    currentTime = datetime.now()
 
     message = update.message.text
+    user = update.message.from_user
+    if(update.message.photo):
+        photo_file = update.message.photo[-1].get_file()
+        photo_file.download('images/user_photo.jpg')
+        logger.info("Photo of %s: %s", user.first_name, 'images/user_photo.jpg')
+        update.message.reply_text(
+            'I\'ve received your photo and added it to your journal entry for today.'
+        )
+        filename = f'{user.id}_{currentTime.year}{currentTime.month}{currentTime.day}_{currentTime.hour}{currentTime.minute}{currentTime.seconds}.jpg'
+        bucketname = 'timecapsule-spehsa'
+        s3.upload_file('images/user_photo.jpg', bucketname, filename)
+        url = f"https://{bucketname}.s3.{s3region}.amazonaws.com/{filename}"
+
+    else:
+        # handle text input
+        print(message)
 
     return IDLE
 
@@ -102,7 +125,7 @@ def main() -> None:
         entry_points=[CommandHandler('start', start)],
         states={
             CONFIG: [MessageHandler(Filters.text & ~Filters.command, config)],
-            IDLE: [MessageHandler(Filters.text & ~Filters.command, idle)],
+            IDLE: [MessageHandler(Filters.text & ~Filters.command | Filters.photo, idle)],
             WRITING: [MessageHandler(Filters.text & ~Filters.command, config)],
             PROMPT: [MessageHandler(Filters.text & ~Filters.command, config)],
             FREE: [MessageHandler(Filters.text & ~Filters.command, config)],
