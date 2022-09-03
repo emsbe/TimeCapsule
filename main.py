@@ -22,7 +22,7 @@ def start(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(
         'Hi! I\'m your personal time capsule. I will hold a conversation with you and by this you will build a journal of your everyday activites.'
         'This is a prototype that stores your data publicly accessible on AWS. Please only share what is ok for you.'
-        'Send /cancel to stop talking to me. Tell me when do you want to write your journal? Please use the format HH:MM. \n\n'
+        'Send /cancel to stop talking to me. Tell me when do you want to write your journal? Please use the format HH:MM in UCT. \n\n'
     )
 
     return CONFIG
@@ -44,29 +44,20 @@ def config(update: Update, context: CallbackContext) -> int:
     hours = time1[0]
     minutes = time1[1]
     update.message.reply_text(f'Thank you! I will message you at {hours}:{minutes}.')
-    print(update.message.text)
 
+    # debugging timer setting to 10 seconds after now (Berlin is UTC+2)
     x = datetime.now()
     print(x)
-    later = x + timedelta(0, 10)
+    later = x + timedelta(hours =  -2, seconds = 10)
 
     chat_id = update.effective_message.chat_id
-    due = 5
-    # if due < 0:
-    #     await update.effective_message.reply_text("Sorry we can not go back to future!")
-    #     return
     #job_removed = remove_job_if_exists(str(chat_id), context)
 
     # get this to work and we can safe a lot of code
-    # context.job_queue.run_daily(alarm, later, context={"chat_id":chat_id,"data":user.first_name}, name=str(chat_id))
-
-    # the following executes alarm 5 seconds afterwards, based on https://github.com/python-telegram-bot/python-telegram-bot/blob/master/examples/timerbot.py
-    context.job_queue.run_once(alarm, due, context={"chat_id":chat_id,"data":user.first_name}, name=str(chat_id))
-
+    context.job_queue.run_daily(alarm, later, context={"chat_id":chat_id,"data":user.first_name}, name=str(chat_id))
     text = "Timer successfully set!"
-    print(text, later)
+
     update.effective_message.reply_text(text)
-    print(context.job_queue)
     #if job_removed:
     #    text += " Old one was removed."
     #await update.effective_message.reply_text(text)
