@@ -12,6 +12,9 @@ pymongo
 
 Then execute the main in main.py to start the bot
 
+for the pdfCreator you need npm and then execute
+`npm install`
+
 
 ### How it works
 The timecapsule bot gathers user data and stores images on AWS and the text entries and references to the images on a MongoDB.
